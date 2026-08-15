@@ -1,0 +1,1491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chord Flashcards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#B5312B;
+  --ink:#F6EFE6;
+  --ink-soft:rgba(246,239,230,.62);
+  --ink-faint:rgba(246,239,230,.28);
+  --panel:rgba(22,16,14,.55);
+  --panel-ink:#F6EFE6;
+  --panel-ink-soft:rgba(246,239,230,.62);
+  --panel-ink-faint:rgba(246,239,230,.28);
+  --g-ink:#18140F;
+  --g-ink-soft:rgba(24,20,15,.6);
+  --g-ink-faint:rgba(24,20,15,.32);
+  --page-bg:#F4EEE4;
+  --sans:"Inter Tight",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--sans);
+  overflow:hidden;
+  transition:background-color .9s cubic-bezier(.4,0,.2,1);
+  -webkit-font-smoothing:antialiased;
+}
+button,select,input{font:inherit;color:inherit}
+
+/* splash / page-load intro */
+#splash{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
+  background:#18140F;transition:background-color .4s ease,opacity .8s ease}
+#splash.leaving{opacity:0;pointer-events:none}
+#splashWord{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.32em;text-transform:uppercase;
+  color:#fff;mix-blend-mode:difference;opacity:0;transform:translateY(10px);
+  transition:opacity .95s cubic-bezier(.2,.8,.2,1),transform .95s cubic-bezier(.2,.8,.2,1)}
+#splashWord.show{opacity:1;transform:translateY(0)}
+
+/* corner labels */
+.corner{position:fixed;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);z-index:5;line-height:1.5}
+.corner.tl{top:26px;left:32px}
+.corner.tr{top:26px;right:32px;text-align:right}
+.corner strong{color:var(--ink);font-weight:500}
+.corner .rule{display:block;width:28px;height:1px;background:var(--ink-faint);margin:8px 0}
+
+/* card */
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:70px 24px 130px}
+.card{display:flex;flex-direction:column;align-items:center;text-align:center;transition:opacity .35s ease,transform .35s ease;max-width:100%}
+.card.out{opacity:0;transform:translateY(10px)}
+.kicker{font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:22px}
+.name{font-weight:800;font-size:clamp(84px,14vh,160px);line-height:.92;letter-spacing:-.04em;display:flex;align-items:baseline;justify-content:center;gap:.04em}
+.name .suffix{font-size:.42em;font-weight:600;letter-spacing:-.02em;color:var(--ink);opacity:.9}
+.name .acc{font-size:.42em;font-weight:600;position:relative;top:-.62em;margin-left:.02em}
+.diagram-wrap{margin-top:clamp(18px,3vh,36px);position:relative;transition:opacity .5s ease,transform .5s ease,filter .5s ease}
+.diagram-wrap.hidden{opacity:0;transform:scale(.96);filter:blur(6px);pointer-events:none}
+.diagram-wrap svg{display:block;height:clamp(230px,44vh,420px);width:auto;overflow:visible}
+.reveal-hint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);opacity:0;transition:opacity .4s;white-space:nowrap}
+.reveal-hint.show{opacity:1}
+.tab{margin-top:14px;font-family:var(--mono);font-size:15px;letter-spacing:.35em;color:var(--ink);opacity:.9}
+.tab span{display:inline-block;min-width:1.4em;padding:0 .18em;text-align:center}
+.tab .mute{color:var(--ink-faint)}
+.tab-label{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint);margin-top:6px}
+
+/* controls */
+#panel{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%);
+  background:var(--panel);backdrop-filter:blur(18px) saturate(1.2);-webkit-backdrop-filter:blur(18px) saturate(1.2);
+  border:1px solid rgba(246,239,230,.12);border-radius:16px;
+  padding:10px 12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;
+  width:max-content;max-width:calc(100vw - 32px);z-index:30;
+}
+.grp{display:flex;align-items:center;gap:6px;padding:0 6px}
+.grp+.grp{border-left:1px solid rgba(246,239,230,.12)}
+.lbl{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--panel-ink-soft);white-space:nowrap}
+.btn{background:transparent;border:1px solid transparent;border-radius:9px;height:34px;min-width:34px;padding:0 8px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--panel-ink);transition:background .15s}
+.btn:hover{background:rgba(246,239,230,.1)}
+.btn[data-tip]{position:relative}
+.btn[data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 11px);left:50%;
+  transform:translateX(-50%) translateY(4px);background:rgba(20,15,12,.94);color:#F6EFE6;
+  font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;
+  padding:7px 10px;border-radius:8px;white-space:nowrap;pointer-events:none;z-index:40;
+  opacity:0;transition:opacity .13s ease,transform .13s ease}
+.btn[data-tip]:hover::after,.btn[data-tip]:focus-visible::after{
+  opacity:1;transform:translateX(-50%) translateY(0);transition-delay:.33s}
+@media (hover:none){.btn[data-tip]::after{display:none}}
+.btn.on{background:rgba(246,239,230,.16)}
+.btn.active{background:rgba(246,239,230,.16)}
+.btn svg{width:16px;height:16px;fill:currentColor}
+select{
+  max-width:200px;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;
+  appearance:none;-webkit-appearance:none;background:rgba(246,239,230,.08);border:1px solid rgba(246,239,230,.14);
+  border-radius:9px;height:34px;padding:0 28px 0 12px;font-size:13px;font-weight:500;cursor:pointer;color:var(--panel-ink);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23F6EFE6' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;
+}
+select:hover{background-color:rgba(246,239,230,.14)}
+select option{color:#111;background:#F6EFE6}
+select.dim{opacity:.45}
+.btn.dim{opacity:.4;pointer-events:none}
+.speed{display:flex;align-items:center;gap:8px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:90px;height:2px;background:rgba(246,239,230,.3);border-radius:2px;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--panel-ink);cursor:pointer;border:none}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--panel-ink);cursor:pointer;border:none}
+.val{font-family:var(--mono);font-size:12px;min-width:2.6em;text-align:right;color:var(--panel-ink)}
+.hint{position:fixed;bottom:9px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);z-index:29;white-space:nowrap}
+
+/* settings gear button */
+.palette-ctl{position:fixed;bottom:37px;right:32px;z-index:31}
+.palette-toggle{
+  width:34px;height:34px;padding:0;display:flex;align-items:center;justify-content:center;
+  background:transparent;border:none;cursor:pointer;color:#F6EFE6;opacity:.82;
+  transition:opacity .15s ease,transform .35s ease}
+.palette-toggle:hover{opacity:1;transform:rotate(30deg)}
+.palette-toggle svg{width:20px;height:20px;fill:currentColor;filter:drop-shadow(0 1px 4px rgba(0,0,0,.4))}
+.palette-toggle[data-tip]{position:relative}
+.palette-toggle[data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 11px);right:0;
+  background:rgba(20,15,12,.94);color:#F6EFE6;font-family:var(--mono);font-size:10px;font-weight:500;
+  letter-spacing:.14em;text-transform:uppercase;padding:7px 10px;border-radius:8px;white-space:nowrap;
+  pointer-events:none;z-index:40;opacity:0;transform:translateY(4px);transition:opacity .13s ease,transform .13s ease}
+.palette-toggle[data-tip]:hover::after,.palette-toggle[data-tip]:focus-visible::after{opacity:1;transform:translateY(0);transition-delay:.33s}
+body.settings-open .palette-toggle[data-tip]::after{opacity:0!important}
+@media (hover:none){.palette-toggle[data-tip]::after{display:none}}
+
+/* settings overlay */
+.settings-overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .18s ease}
+.settings-overlay.open{opacity:1;pointer-events:auto}
+.settings-backdrop{position:absolute;inset:0;background:rgba(12,9,7,.6);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.settings-panel{position:relative;width:min(440px,calc(100vw - 40px));max-height:calc(100vh - 64px);overflow-y:auto;
+  background:rgba(20,15,12,.94);backdrop-filter:blur(22px) saturate(1.2);-webkit-backdrop-filter:blur(22px) saturate(1.2);
+  border:1px solid rgba(246,239,230,.14);border-radius:18px;padding:22px 22px 24px;
+  color:#F6EFE6;transform:translateY(10px) scale(.98);transition:transform .18s ease}
+.settings-overlay.open .settings-panel{transform:translateY(0) scale(1)}
+.settings-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.settings-head strong{font-size:16px;font-weight:600;letter-spacing:-.01em}
+.settings-close{background:transparent;border:none;color:#F6EFE6;opacity:.7;cursor:pointer;
+  width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:8px;transition:background .15s,opacity .15s}
+.settings-close:hover{opacity:1;background:rgba(246,239,230,.1)}
+.settings-close svg{width:16px;height:16px}
+.settings-section{margin-top:18px;padding-top:18px;border-top:1px solid rgba(246,239,230,.12)}
+.settings-section:first-of-type{margin-top:16px;padding-top:16px}
+.settings-label{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:rgba(246,239,230,.55);margin-bottom:10px}
+.settings-presets{display:flex;flex-direction:column;gap:2px}
+.palette-item{display:flex;align-items:center;border-radius:8px;transition:background .12s}
+.palette-item:hover{background:rgba(246,239,230,.1)}
+.palette-item.active{background:rgba(246,239,230,.16)}
+.palette-row{display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;cursor:pointer;
+  background:transparent;border:none;color:#F6EFE6;font-family:var(--mono);font-size:11px;font-weight:500;
+  letter-spacing:.1em;text-transform:uppercase;text-align:left;flex:1;min-width:0}
+.palette-row .check{flex:0 0 auto;width:13px;height:13px;display:flex;align-items:center;justify-content:center}
+.palette-row .check svg{width:13px;height:13px;fill:none;stroke:#F6EFE6;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.palette-row .dots{display:flex;gap:3px;flex:0 0 auto}
+.palette-row .dots span{width:9px;height:9px;border-radius:50%;display:block}
+.palette-row .pname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.palette-del{flex:0 0 auto;width:28px;height:28px;margin-right:5px;padding:0;display:flex;align-items:center;justify-content:center;
+  background:transparent;border:none;border-radius:7px;cursor:pointer;color:#F6EFE6;opacity:0;transition:opacity .12s,background .12s}
+.palette-del svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.palette-item:hover .palette-del{opacity:.55}
+.palette-del:hover{opacity:1;background:rgba(210,104,90,.28)}
+.palette-del:focus-visible{opacity:1}
+.palette-item.active .palette-del{display:none}
+@media (hover:none){.palette-del{opacity:.55}}
+.palette-new{margin-top:6px;width:100%;display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;cursor:pointer;
+  background:transparent;border:1px dashed rgba(246,239,230,.24);color:rgba(246,239,230,.72);
+  font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;
+  transition:background .12s,color .12s,border-color .12s}
+.palette-new:hover{background:rgba(246,239,230,.08);color:#F6EFE6;border-color:rgba(246,239,230,.4)}
+.palette-new svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.field-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0}
+.field-name{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:rgba(246,239,230,.85)}
+.swatch-input{display:flex;align-items:center;gap:8px}
+.swatch-input input[type=color]{-webkit-appearance:none;appearance:none;width:30px;height:30px;padding:0;border:1px solid rgba(246,239,230,.24);border-radius:8px;background:none;cursor:pointer}
+.swatch-input input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+.swatch-input input[type=color]::-webkit-color-swatch{border:none;border-radius:7px}
+.swatch-input input[type=color]::-moz-color-swatch{border:none;border-radius:7px}
+.swatch-input input[type=text]{width:84px;background:rgba(246,239,230,.08);border:1px solid rgba(246,239,230,.16);
+  border-radius:7px;height:30px;padding:0 9px;font-family:var(--mono);font-size:12px;font-weight:500;color:#F6EFE6;
+  text-transform:uppercase;letter-spacing:.02em}
+.swatch-input input[type=text]:focus{outline:none;border-color:rgba(246,239,230,.4)}
+.swatch-input input[type=text].invalid{border-color:#D2685A;color:#F0A99B}
+.settings-keys{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 8px}
+.key-field{display:flex;flex-direction:column;align-items:center;gap:6px}
+.key-field .kf-letter{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.08em;color:rgba(246,239,230,.6)}
+.key-field input[type=color]{-webkit-appearance:none;appearance:none;width:100%;aspect-ratio:1;padding:0;
+  border:1px solid rgba(246,239,230,.24);border-radius:9px;background:none;cursor:pointer}
+.key-field input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+.key-field input[type=color]::-webkit-color-swatch{border:none;border-radius:8px}
+.key-field input[type=color]::-moz-color-swatch{border:none;border-radius:8px}
+.key-field input[type=text]{width:100%;background:rgba(246,239,230,.08);border:1px solid rgba(246,239,230,.16);
+  border-radius:6px;height:24px;padding:0;font-family:var(--mono);font-size:10px;font-weight:500;color:#F6EFE6;
+  text-align:center;text-transform:uppercase}
+.key-field input[type=text]:focus{outline:none;border-color:rgba(246,239,230,.4)}
+.key-field input[type=text].invalid{border-color:#D2685A;color:#F0A99B}
+.kf-ink{width:100%;height:20px;border:1px solid rgba(246,239,230,.16);border-radius:6px;cursor:pointer;
+  background:rgba(246,239,230,.08);font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;
+  color:rgba(246,239,230,.55);text-transform:uppercase;transition:background .15s,color .15s,border-color .15s}
+.kf-ink:hover{border-color:rgba(246,239,230,.32)}
+.kf-ink[data-mode="dark"]{background:#F6EFE6;color:#18140F;border-color:#F6EFE6}
+.settings-save{margin-top:20px;width:100%;height:40px;border:none;border-radius:10px;cursor:pointer;
+  background:#F6EFE6;color:#18140F;font-family:var(--mono);font-size:11px;font-weight:600;
+  letter-spacing:.14em;text-transform:uppercase;transition:background .15s,transform .1s}
+.settings-save:hover{background:#fff}
+.settings-save:active{transform:scale(.98)}
+.settings-save.saved{background:#8FBF9F;color:#132018}
+.settings-export{margin-top:10px;width:100%;height:36px;border:1px solid rgba(246,239,230,.18);border-radius:10px;
+  cursor:pointer;background:transparent;color:rgba(246,239,230,.72);font-family:var(--mono);font-size:10px;
+  font-weight:600;letter-spacing:.12em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;
+  gap:7px;transition:background .15s,color .15s,border-color .15s}
+.settings-export svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.settings-export:hover{border-color:rgba(246,239,230,.4);color:#F6EFE6}
+.settings-export.copied{background:#8FBF9F;color:#132018;border-color:#8FBF9F}
+
+
+/* grain */
+#grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0.7;mix-blend-mode:soft-light;
+  background-image:url("data:image/png;base64,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");
+  background-size:128px 128px;background-repeat:repeat}
+@media (-webkit-min-device-pixel-ratio:2),(min-resolution:2dppx){#grain{background-size:64px 64px}}
+body.gridmode #grain,body.progmode #grain{display:none}
+
+/* progression list */
+.prog-body{padding:calc(clamp(10px,2.5vh,26px)) 32px 150px;display:flex;flex-direction:column;max-width:1100px}
+.prog-row{display:block;width:100%;text-align:left;background:none;border:0;cursor:pointer;
+  padding:clamp(12px,1.8vh,20px) 0 clamp(13px,1.9vh,21px);
+  border-bottom:1px solid rgba(24,20,15,.13);color:var(--g-ink);
+  transition:padding-left .18s cubic-bezier(.4,0,.2,1),background-color .18s}
+.prog-row:first-child{border-top:1px solid rgba(24,20,15,.13)}
+.prog-row:hover,.prog-row:focus-visible{padding-left:14px;background:rgba(24,20,15,.045);outline:none}
+.prog-name{display:block;font-family:var(--sans);font-weight:600;letter-spacing:-.025em;line-height:1.05;
+  font-size:clamp(26px,3.6vh,40px)}
+.prog-level{display:inline-flex;align-items:center;gap:5px;margin-bottom:7px;padding:3px 8px 3px 6px;border-radius:999px;
+  font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--lc,var(--g-ink-soft));opacity:.85}
+.prog-level::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
+.prog-chords{display:block;margin-top:9px;font-family:var(--mono);font-size:11px;font-weight:500;
+  letter-spacing:.14em;text-transform:uppercase}
+.prog-chords span{color:var(--pc,var(--g-ink-soft));font-weight:500}
+.prog-chords i{font-style:normal;color:var(--g-ink-faint);padding:0 .45em}
+.prog-row.current .prog-name{text-decoration:underline;text-underline-offset:6px;text-decoration-thickness:2px}
+.prog-row.enter{animation:tileIn .066s ease-out backwards;animation-delay:var(--d,0s)}
+@media (prefers-reduced-motion:reduce){.prog-row.enter{animation:none}}
+@media (max-width:760px){
+  .prog-body{padding:6px 16px 190px}
+  .prog-name{font-size:clamp(21px,5.6vw,30px)}
+  .prog-chords{font-size:10px;letter-spacing:.1em}
+}
+
+/* chord grid */
+#grid,#progs{position:fixed;left:0;right:0;bottom:0;top:var(--head-h,92px);background:var(--page-bg);z-index:10;display:none;overflow-y:auto;overscroll-behavior:contain}
+#grid.open,#progs.open{display:block}
+body.gridmode #stage,body.gridmode .corner,body.gridmode .hint,
+body.progmode #stage,body.progmode .corner,body.progmode .hint{display:none}
+body.gridmode,body.progmode{background:var(--page-bg)}
+.grid-head,.prog-head{position:fixed;top:0;left:0;right:0;z-index:12;background:var(--page-bg);padding:26px 32px 22px;display:none;align-items:flex-start;gap:22px}
+body.gridmode .grid-head{display:flex}
+body.progmode .prog-head{display:flex}
+.grid-title{font-family:var(--mono);font-size:11px;line-height:1.5;letter-spacing:.14em;text-transform:uppercase;color:var(--g-ink-soft);white-space:nowrap}
+.grid-title strong{color:var(--g-ink);font-weight:500;display:block}
+.search{margin-left:auto;margin-top:16.5px;display:flex;align-items:baseline;justify-content:flex-end;gap:20px;flex:0 0 auto}
+.search input{width:360px;height:auto;line-height:1.5;text-align:right;background:none;border:none;border-radius:0;outline:none;box-shadow:none;
+  padding:14px 0;margin:-14px 0;
+  font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--g-ink)}
+.search input::placeholder{color:var(--g-ink-faint);font-weight:500;text-transform:uppercase}
+.search .count{flex:0 0 auto;line-height:1.5;white-space:nowrap;font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--g-ink-soft)}
+.grid-body{padding:0 32px 150px;display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:1px;background:var(--page-bg)}
+.tile{position:relative;border-radius:0;aspect-ratio:.86;padding:9px 9px 6px;cursor:pointer;color:var(--ink);display:flex;flex-direction:column;overflow:hidden;transition:transform .15s ease,box-shadow .15s ease,filter .15s;border:1px solid rgba(0,0,0,.06)}
+.tile.pending{opacity:0}
+.tile.enter{animation:tileIn .066s ease-out backwards;animation-delay:var(--d,0s)}
+.tile.leave{animation:tileOut .066s ease-out forwards;animation-delay:var(--d,0s)}
+@keyframes tileIn{from{opacity:0}to{opacity:1}}
+@keyframes tileOut{from{opacity:1}to{opacity:0}}
+@media (prefers-reduced-motion:reduce){.tile.enter,.tile.leave{animation:none}.tile.pending{opacity:1}}
+.tile:hover{transform:translateY(-2px) scale(1.03);box-shadow:0 10px 26px rgba(0,0,0,.35);z-index:1}
+.tile.exact{outline:2px solid var(--g-ink);outline-offset:1px}
+.tile .tn{font-weight:700;font-size:15px;letter-spacing:-.02em;line-height:1;white-space:nowrap}
+.tile .tn small{font-size:11px;font-weight:600;margin-left:1px}
+.tile .tq{font-family:var(--mono);font-size:8px;letter-spacing:.12em;text-transform:uppercase;opacity:.6;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile svg{width:100%;flex:1;min-height:0;margin-top:4px;overflow:visible}
+.tile .tf{font-family:var(--mono);font-size:8.5px;letter-spacing:.08em;white-space:nowrap;opacity:.7;margin-top:5px;text-align:center}
+.grid-empty{grid-column:1/-1;padding:60px 0;text-align:center;font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--g-ink-soft)}
+@media (max-width:760px){.grid-head{padding:16px 16px 14px;flex-direction:column;align-items:stretch;gap:12px}
+  .search{margin-top:0;margin-left:0}
+  .search input{flex:1;width:auto}
+  body.gridmode .grid-head{display:flex}
+  .grid-body{padding:0 12px 190px;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:1px}.tile .tn{font-size:12px}.tile .tq{display:none}}
+
+@media (max-width:1320px){ .lbl{display:none} }
+@media (max-width:760px){
+  .corner.tl{left:18px;top:18px}.corner.tr{right:18px;top:18px}
+  #stage{padding:60px 16px 190px}
+  .name{font-size:clamp(64px,20vw,110px)}
+  .diagram-wrap svg{height:clamp(200px,32vh,300px)}
+  #panel{bottom:14px;padding:8px}
+  .palette-ctl{right:18px}
+  .grp{padding:0 4px}
+  .lbl{display:none}
+  .hint{display:none}
+  input[type=range]{width:80px}
+}
+</style>
+</head>
+<body>
+<div id="splash"><span id="splashWord">CHORD HIIT</span></div>
+<div id="grain"></div>
+
+<div class="corner tl"><strong>CHORD HIIT</strong><span class="rule"></span><span id="setLabel">All chords</span></div>
+<div class="corner tr"><strong id="counter">01 — 00</strong><span class="rule" style="margin-left:auto"></span><span id="posLabel">Shuffle</span></div>
+
+<div id="stage">
+  <div class="card" id="card">
+    <div class="kicker" id="kicker">major</div>
+    <div class="name" id="name"></div>
+    <div class="diagram-wrap" id="dwrap">
+      <div id="svgHost"></div>
+      <div class="tab" id="tab"></div>
+      <div class="tab-label">frets · low E → high E</div>
+      <div class="reveal-hint" id="revealHint">tap to reveal</div>
+    </div>
+  </div>
+</div>
+
+<div class="grid-head">
+  <div class="grid-title"><strong id="gridTitle">All chords</strong>A → G♯ · by root</div>
+  <div class="search"><input id="search" type="text" placeholder="Search chord name — C, F#m7, Bbmaj7…" autocomplete="off" spellcheck="false"><span class="count" id="searchCount"></span></div>
+</div>
+<div class="prog-head">
+  <div class="grid-title"><strong>Progressions</strong>pick one to play it in order</div>
+</div>
+<div id="progs"><div class="prog-body" id="progBody"></div></div>
+
+<div id="grid">
+  <div class="grid-body" id="gridBody"></div>
+</div>
+
+<div id="panel">
+  <div class="grp">
+    <button class="btn" id="allBtn" data-tip="HOME" aria-label="Clear all filters"><svg viewBox="0 0 24 24"><path d="M7 4L17 4Q20 4 19 8L13.5 20.5Q12 23 10.5 20.5L5 8Q4 4 7 4Z"/></svg></button>
+  </div>
+  <div class="grp">
+    <button class="btn" id="prev" data-tip="Previous" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M15.5 5l-7 7 7 7V5z"/></svg></button>
+    <button class="btn" id="play" data-tip="Play / pause" aria-label="Play or pause"><svg id="icoPause" viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg><svg id="icoPlay" viewBox="0 0 24 24" style="display:none"><path d="M8 5v14l11-7z"/></svg></button>
+    <button class="btn" id="next" data-tip="Next" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M8.5 5l7 7-7 7V5z"/></svg></button>
+    <button class="btn on" id="shuffle" data-tip="Shuffle" aria-label="Shuffle"><svg viewBox="0 0 24 24"><path d="M17 3l4 4-4 4V8h-2.2l-2.6 3.1-1.3-1.5L13.9 6H17V3zM3 6h4.9l7.2 8.4H17v-3l4 4-4 4v-3h-2.8L7 8H3V6zm0 10h4l1.7-2 1.3 1.5L7.9 18H3v-2z"/></svg></button>
+  </div>
+  <div class="grp speed">
+    <span class="lbl">Speed</span>
+    <input type="range" id="speed" min="2" max="15" step="1" value="5">
+    <span class="val" id="speedVal">5s</span>
+  </div>
+  <div class="grp">
+    <span class="lbl">Key</span>
+    <select id="key" style="width:132px"></select>
+  </div>
+  <div class="grp">
+    <span class="lbl">Focus</span>
+    <select id="focus" style="width:150px"></select>
+  </div>
+  <div class="grp">
+    <span class="lbl">Reveal</span>
+    <select id="reveal" style="width:150px">
+      <option value="0">Instant</option>
+      <option value="1">Name first · 1s</option>
+      <option value="2">Name first · 2s</option>
+      <option value="3">Name first · 3s</option>
+      <option value="half">Name first · half</option>
+    </select>
+  </div>
+  <div class="grp">
+    <button class="btn" id="progBtn" data-tip="Progressions" aria-label="Progressions"><svg viewBox="0 0 24 24"><path d="M3 6h13v2H3zM3 11h13v2H3zM3 16h9v2H3zM18.4 13.4l5.1 3.6-5.1 3.6z"/></svg></button>
+    <button class="btn" id="gridBtn" data-tip="Chords" aria-label="Chords"><svg viewBox="0 0 24 24"><path d="M2.0 2.0h2.6v2.6h-2.6zM6.4 2.0h2.6v2.6h-2.6zM10.8 2.0h2.6v2.6h-2.6zM15.2 2.0h2.6v2.6h-2.6zM19.6 2.0h2.6v2.6h-2.6zM2.0 6.4h2.6v2.6h-2.6zM6.4 6.4h2.6v2.6h-2.6zM10.8 6.4h2.6v2.6h-2.6zM15.2 6.4h2.6v2.6h-2.6zM19.6 6.4h2.6v2.6h-2.6zM2.0 10.8h2.6v2.6h-2.6zM6.4 10.8h2.6v2.6h-2.6zM10.8 10.8h2.6v2.6h-2.6zM15.2 10.8h2.6v2.6h-2.6zM19.6 10.8h2.6v2.6h-2.6zM2.0 15.2h2.6v2.6h-2.6zM6.4 15.2h2.6v2.6h-2.6zM10.8 15.2h2.6v2.6h-2.6zM15.2 15.2h2.6v2.6h-2.6zM19.6 15.2h2.6v2.6h-2.6zM2.0 19.6h2.6v2.6h-2.6zM6.4 19.6h2.6v2.6h-2.6zM10.8 19.6h2.6v2.6h-2.6zM15.2 19.6h2.6v2.6h-2.6zM19.6 19.6h2.6v2.6h-2.6z"/></svg></button>
+  </div>
+</div>
+<div class="hint">space · pause &nbsp;&nbsp; ← → · step &nbsp;&nbsp; g · grid &nbsp;&nbsp; p · progressions</div>
+
+<div class="settings-overlay" id="settingsOverlay">
+  <div class="settings-backdrop" id="settingsBackdrop"></div>
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-head">
+      <strong>Settings</strong>
+      <button class="settings-close" id="settingsClose" type="button" aria-label="Close settings">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">Palettes</div>
+      <div class="settings-presets" id="paletteMenu" role="menu"></div>
+      <button class="palette-new" id="paletteNew" type="button">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New palette
+      </button>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">Edit · <span id="editTarget">Sunset</span></div>
+      <div class="field-row">
+        <span class="field-name">Page background</span>
+        <span class="swatch-input"><input type="color" id="custBg"><input type="text" id="custBgHex" maxlength="7" spellcheck="false"></span>
+      </div>
+      <div class="field-row">
+        <span class="field-name">Text · dark</span>
+        <span class="swatch-input"><input type="color" id="custDark"><input type="text" id="custDarkHex" maxlength="7" spellcheck="false"></span>
+      </div>
+      <div class="field-row">
+        <span class="field-name">Text · light</span>
+        <span class="swatch-input"><input type="color" id="custLight"><input type="text" id="custLightHex" maxlength="7" spellcheck="false"></span>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">Keys A – G</div>
+      <div class="settings-keys" id="custKeys"></div>
+    </div>
+    <button class="settings-save" id="custSave" type="button">Save changes</button>
+    <button class="settings-export" id="paletteExport" type="button">
+      <svg viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>Copy palette data
+    </button>
+  </div>
+</div>
+
+<div class="palette-ctl" id="paletteCtl">
+  <button class="palette-toggle" id="paletteToggle" type="button" data-tip="Settings" aria-label="Settings" aria-haspopup="dialog" aria-expanded="false">
+    <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+  </button>
+</div>
+
+<script>
+/* ---------- Music data ---------- */
+const NOTES=['A','A#','B','C','C#','D','D#','E','F','F#','G','G#'];
+const DISPLAY={'A#':'B♭','D#':'E♭','G#':'A♭'};
+// A→G mapped across the "Black / Copper / Pink / Tan / Blush / Vanilla / Green / Mint" palette
+const COLORS={
+  'A':'#292421','A#':'#A75F37','B':'#B8765C','C':'#CA8E82','C#':'#D2A490',
+  'D':'#D9B99F','D#':'#E6C8B6','E':'#F2D6CE','F':'#F2E7DD','F#':'#B6BEB6',
+  'G':'#7A958F','G#':'#BAE0DA'
+};
+// alternate background palettes — same 12-key shape as COLORS, swapped in live via applyPalette()
+// these seed the library on first run; the live list (PALETTES) is user-editable and persisted
+const BUILTIN_PALETTES=[
+  {id:'sunset',name:'Sunset',colors:Object.assign({},COLORS)},
+  {id:'terra',name:'Terra',colors:{
+    'A':'#013D5A','A#':'#5F8894','B':'#BDD3CE','C':'#FCF3E3','C#':'#B6C0A6',
+    'D':'#708C69','D#':'#B29761','E':'#F4A258','F':'#F47D15','F#':'#8E6337',
+    'G':'#284858','G#':'#154359'},
+    theme:{pageBg:'#F4EEE4',dark:'#18140F',light:'#F6EFE6'},
+    keyInk:{A:'light',B:'dark',C:'dark',D:'light',E:'dark',F:'dark',G:'light'}},
+  {id:'p02p7492',name:'Amber Grove',colors:{
+    'A':'#000A21','A#':'#1C314A','B':'#385772','C':'#BCDEF1','C#':'#D4DEE1',
+    'D':'#EBDDD0','D#':'#F2E6DF','E':'#F9EFED','F':'#FF3213','F#':'#CF2C14',
+    'G':'#9F2614','G#':'#50181B'},
+    theme:{pageBg:'#F4EEE4',dark:'#18140F',light:'#F6EFE6'},
+    keyInk:{A:'light',B:'dark',C:'dark',D:'dark',E:'dark',F:'light',G:'light'}},
+  {id:'pn0miia3',name:'Deep Verse',colors:{
+    'A':'#F6BF0A','A#':'#E6920D','B':'#D5650F','C':'#ADC7BE','C#':'#779584',
+    'D':'#41634A','D#':'#2F4D49','E':'#1C3647','F':'#D8D0CD','F#':'#CCC3B7',
+    'G':'#C0B5A1','G#':'#DBBA56'},
+    theme:{pageBg:'#F4EEE4',dark:'#18140F',light:'#F6EFE6'},
+    keyInk:{A:'dark',B:'dark',C:'dark',D:'light',E:'light',F:'dark',G:'dark'}},
+];
+const DEFAULT_PALETTE_ID='pn0miia3';
+let PALETTES=BUILTIN_PALETTES.map(p=>{
+  const pal={id:p.id,name:p.name,colors:Object.assign({},p.colors)};
+  if(p.theme) pal.theme=Object.assign({},p.theme);
+  if(p.keyInk) pal.keyInk=Object.assign({},p.keyInk);
+  return pal;
+});
+const PALETTE_SAMPLE=['A','C','D#','F#']; // 4 representative notes shown as the swatch preview dots
+// random two-word names for newly created palettes
+const NAME_HEAD=['Amber','Velvet','Crimson','Midnight','Golden','Dusty','Electric','Faded','Neon','Rustic',
+  'Silver','Wild','Smoky','Pale','Deep','Vivid','Muted','Sunlit','Moonlit','Coastal','Northern','Quiet'];
+const NAME_TAIL=['Drift','Tide','Ember','Haze','Bloom','Echo','Grove','Prism','Ridge','Shore',
+  'Verse','Dawn','Dusk','Field','Storm','Meadow','Canyon','Harbor','Signal','Static','Current','Hollow'];
+function randomPaletteName(){
+  const pick=()=>NAME_HEAD[Math.floor(Math.random()*NAME_HEAD.length)]+' '+NAME_TAIL[Math.floor(Math.random()*NAME_TAIL.length)];
+  for(let i=0;i<40;i++){ const n=pick(); if(!PALETTES.some(p=>p.name.toLowerCase()===n.toLowerCase())) return n; }
+  return pick()+' '+(PALETTES.length+1);
+}
+function newPaletteId(){ return 'p'+Math.random().toString(36).slice(2,8)+PALETTES.length; }
+
+// auto light/dark text: pick whichever ink theme has more WCAG contrast against a given background hex
+const INK_SETS={
+  light:{ink:'#F6EFE6',soft:'rgba(246,239,230,.62)',faint:'rgba(246,239,230,.28)'},
+  dark:{ink:'#18140F',soft:'rgba(24,20,15,.6)',faint:'rgba(24,20,15,.32)'}
+};
+function relLum(hex){
+  hex=hex.replace('#','');
+  const c=[0,2,4].map(i=>parseInt(hex.substr(i,2),16)/255).map(v=>v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4));
+  return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2];
+}
+function contrastRatio(hexA,hexB){
+  const a=relLum(hexA),b=relLum(hexB),hi=Math.max(a,b),lo=Math.min(a,b);
+  return (hi+0.05)/(lo+0.05);
+}
+function pickInk(bgHex){
+  const cl=contrastRatio(bgHex,INK_SETS.light.ink), cd=contrastRatio(bgHex,INK_SETS.dark.ink);
+  return cd>cl?'dark':'light';
+}
+function applyInk(el,theme){
+  const t=INK_SETS[theme]||INK_SETS.light;
+  el.style.setProperty('--ink',t.ink);
+  el.style.setProperty('--ink-soft',t.soft);
+  el.style.setProperty('--ink-faint',t.faint);
+}
+function hexToRgba(hex,a){
+  hex=hex.replace('#','');
+  const r=parseInt(hex.substr(0,2),16),g=parseInt(hex.substr(2,2),16),b=parseInt(hex.substr(4,2),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function normHex(h){
+  h=(h||'').trim();
+  if(!h.startsWith('#')) h='#'+h;
+  return /^#[0-9A-Fa-f]{6}$/.test(h)?h.toUpperCase():null;
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+// the page background (grid/progressions screens) + the two text-ink colors, all user-tunable via Settings
+const DEFAULT_THEME={pageBg:'#F4EEE4',dark:'#18140F',light:'#F6EFE6'};
+let PAGE_INK_MODE='dark'; // whichever ink theme is currently active against the page background
+function applyTheme(theme){
+  const t=Object.assign({},DEFAULT_THEME,theme||{});
+  INK_SETS.light={ink:t.light,soft:hexToRgba(t.light,.62),faint:hexToRgba(t.light,.28)};
+  INK_SETS.dark={ink:t.dark,soft:hexToRgba(t.dark,.6),faint:hexToRgba(t.dark,.32)};
+  const r=document.documentElement.style;
+  r.setProperty('--page-bg',t.pageBg);
+  r.setProperty('--panel-ink',t.light);
+  r.setProperty('--panel-ink-soft',hexToRgba(t.light,.62));
+  r.setProperty('--panel-ink-faint',hexToRgba(t.light,.28));
+  // grid/progressions page chrome — auto-pick whichever of dark/light text reads better on the page background
+  PAGE_INK_MODE=pickInk(t.pageBg);
+  const pageInk=PAGE_INK_MODE==='dark'?INK_SETS.dark:INK_SETS.light;
+  r.setProperty('--g-ink',pageInk.ink);
+  r.setProperty('--g-ink-soft',pageInk.soft);
+  r.setProperty('--g-ink-faint',pageInk.faint);
+}
+// accent color for a chord name shown on the progressions page — darkened on a light page, lightened on a dark one
+function tint(hex){
+  const h=hex.replace('#',''); const rgb=[0,2,4].map(i=>parseInt(h.substr(i,2),16));
+  const out=PAGE_INK_MODE==='light'
+    ? rgb.map(c=>Math.round(c+(255-c)*0.55))
+    : rgb.map(c=>Math.round(c*0.68));
+  return '#'+out.map(c=>Math.max(0,Math.min(255,c)).toString(16).padStart(2,'0')).join('');
+}
+// 12-key chromatic map from just the 7 natural keys — sharps are the blend of their neighbors
+const NATURAL_KEYS=['A','B','C','D','E','F','G'];
+function midHex(h1,h2){
+  const p=h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16));
+  const[a1,a2,a3]=p(h1),[b1,b2,b3]=p(h2);
+  return '#'+[[a1,b1],[a2,b2],[a3,b3]].map(([x,y])=>Math.round((x+y)/2).toString(16).padStart(2,'0')).join('').toUpperCase();
+}
+function deriveTwelve(k){
+  return {
+    'A':k.A,'A#':midHex(k.A,k.B),'B':k.B,'C':k.C,'C#':midHex(k.C,k.D),
+    'D':k.D,'D#':midHex(k.D,k.E),'E':k.E,'F':k.F,'F#':midHex(k.F,k.G),
+    'G':k.G,'G#':midHex(k.G,k.A)
+  };
+}
+const QUAL={
+  '':{name:'major',suffix:''},
+  'm':{name:'minor',suffix:'m'},
+  'dim':{name:'diminished',suffix:'°'},
+  '5':{name:'power chord · fifth',suffix:'5'},
+  '6':{name:'sixth',suffix:'6'},
+  'm6':{name:'minor sixth',suffix:'m6'},
+  '7':{name:'dominant seventh',suffix:'7'},
+  'm7':{name:'minor seventh',suffix:'m7'},
+  'maj7':{name:'major seventh',suffix:'maj7'},
+  '9':{name:'dominant ninth',suffix:'9'},
+  '13':{name:'dominant thirteenth',suffix:'13'},
+  '6/9':{name:'six-nine',suffix:'6/9'},
+  'm7b5':{name:'half-diminished',suffix:'m7♭5'},
+  'dim7':{name:'diminished seventh',suffix:'°7'},
+  'sus2':{name:'suspended second',suffix:'sus2'},
+  'sus4':{name:'suspended fourth',suffix:'sus4'},
+  '7sus4':{name:'seven suspended fourth',suffix:'7sus4'},
+  'add9':{name:'add nine',suffix:'add9'},
+};
+// Movable shapes: f = frets relative to barre (null = mute), g = fingers
+const SHAPES={
+  '':    {E:{f:[0,2,2,1,0,0],g:[1,3,4,2,1,1]},          A:{f:[null,0,2,2,2,0],g:[0,1,2,3,4,1]}},
+  'm':   {E:{f:[0,2,2,0,0,0],g:[1,3,4,1,1,1]},          A:{f:[null,0,2,2,1,0],g:[0,1,3,4,2,1]}},
+  '5':   {E:{f:[0,2,2,null,null,null],g:[1,3,4,0,0,0]}, A:{f:[null,0,2,2,null,null],g:[0,1,3,4,0,0]}},
+  '7':   {E:{f:[0,2,0,1,0,0],g:[1,3,1,2,1,1]},          A:{f:[null,0,2,0,2,0],g:[0,1,3,1,4,1]}},
+  'm7':  {E:{f:[0,2,0,0,0,0],g:[1,3,1,1,1,1]},          A:{f:[null,0,2,0,1,0],g:[0,1,3,1,2,1]}},
+  'maj7':{E:{f:[0,null,1,1,0,null],g:[1,0,3,4,2,0]},    A:{f:[null,0,2,1,2,null],g:[0,1,3,2,4,0]}},
+  '9':   {E:{f:[0,2,0,1,0,2],g:[1,3,1,2,1,4]},          A:{f:[null,0,-1,0,0,0],g:[0,2,1,3,3,3]}},
+  '13':  {A:{f:[null,0,-1,0,0,2],g:[0,2,1,3,3,4]}},
+  '6/9': {A:{f:[null,0,-1,-1,0,0],g:[0,2,1,1,3,4]}},
+  'm7b5':{E:{f:[0,null,0,0,-1,null],g:[2,0,3,4,1,0]},   A:{f:[null,0,1,0,1,null],g:[0,1,3,2,4,0]}},
+  'dim7':{E:{f:[0,null,-1,0,-1,null],g:[2,0,1,3,1,0]},  A:{f:[null,0,1,-1,1,null],g:[0,2,3,1,4,0]}},
+  'dim': {E:{f:[0,1,2,0,null,null],g:[1,2,4,1,0,0]},   A:{f:[null,0,1,2,1,null],g:[0,1,2,4,3,0]}},
+  'add9':{E:{f:[0,null,4,1,0,null],g:[1,0,4,2,1,0]},   A:{f:[null,0,2,4,2,0],g:[0,1,2,4,3,1]}},
+  'sus2':{A:{f:[null,0,2,2,0,0],g:[0,1,3,4,1,1]}},
+  'sus4':{E:{f:[0,2,2,2,0,0],g:[1,2,3,4,1,1]},          A:{f:[null,0,2,2,3,0],g:[0,1,2,3,4,1]}},
+  '7sus4':{E:{f:[0,2,0,2,0,0],g:[1,3,1,4,1,1]},         A:{f:[null,0,2,0,3,0],g:[0,1,3,1,4,1]}},
+};
+// Open-position voicings that override the generated barre shapes
+const OPEN={
+  'C':{f:[null,3,2,0,1,0],g:[0,3,2,0,1,0]},
+  'D':{f:[null,null,0,2,3,2],g:[0,0,0,1,3,2]},
+  'G':{f:[3,2,0,0,0,3],g:[2,1,0,0,0,3]},
+  'Dm':{f:[null,null,0,2,3,1],g:[0,0,0,2,3,1]},
+  'C7':{f:[null,3,2,3,1,0],g:[0,3,2,4,1,0]},
+  'D7':{f:[null,null,0,2,1,2],g:[0,0,0,2,1,3]},
+  'G7':{f:[3,2,0,0,0,1],g:[3,2,0,0,0,1]},
+  'B7':{f:[null,2,1,2,0,2],g:[0,2,1,3,0,4]},
+  'Cmaj7':{f:[null,3,2,0,0,0],g:[0,3,2,0,0,0]},
+  'Dmaj7':{f:[null,null,0,2,2,2],g:[0,0,0,1,1,1]},
+  'Amaj7':{f:[null,0,2,1,2,0],g:[0,0,2,1,3,0]},
+  'Emaj7':{f:[0,2,1,1,0,0],g:[0,3,1,2,0,0]},
+  'Gmaj7':{f:[3,2,0,0,0,2],g:[3,2,0,0,0,1]},
+  'Dm7':{f:[null,null,0,2,1,1],g:[0,0,0,2,1,1]},
+  'Cadd9':{f:[null,3,2,0,3,3],g:[0,2,1,0,3,4]},
+  'Gadd9':{f:[3,0,0,2,0,3],g:[2,0,0,1,0,3]},
+  'Eadd9':{f:[0,2,4,1,0,0],g:[0,1,3,2,0,0]},
+  'Aadd9':{f:[null,0,2,4,2,0],g:[0,0,1,3,2,0]},
+  'Dadd9':{f:[null,null,0,2,3,0],g:[0,0,0,1,2,0]},
+  'Dsus2':{f:[null,null,0,2,3,0],g:[0,0,0,1,3,0]},
+  'Dsus4':{f:[null,null,0,2,3,3],g:[0,0,0,1,3,4]},
+  'Csus2':{f:[null,3,0,0,1,3],g:[0,3,0,0,1,4]},
+  'Csus4':{f:[null,3,3,0,1,1],g:[0,3,4,0,1,1]},
+  'Gsus4':{f:[3,3,0,0,1,3],g:[2,3,0,0,1,4]},
+  'D7sus4':{f:[null,null,0,2,1,3],g:[0,0,0,2,1,3]},
+  'C9':{f:[null,3,2,3,3,3],g:[0,2,1,3,3,3]},
+  'A9':{f:[null,0,2,4,2,3],g:[0,0,1,3,2,4]},
+  'A13':{f:[null,0,2,0,2,2],g:[0,0,1,0,2,3]},
+  'A6/9':{f:[null,0,4,4,2,2],g:[0,0,3,4,1,1]},
+  'D9':{f:[null,5,4,5,5,5],g:[0,2,1,3,3,3]},
+  'Bm7b5':{f:[null,2,3,2,3,null],g:[0,1,3,2,4,0]},
+  'C5':{f:[null,3,5,5,null,null],g:[0,1,3,4,0,0]},
+  'D5':{f:[null,5,7,7,null,null],g:[0,1,3,4,0,0]},
+  'G5':{f:[3,5,5,null,null,null],g:[1,3,4,0,0,0]},
+};
+
+function generate(root,q){
+  const pc=NOTES.indexOf(root);
+  const shapes=SHAPES[q]; if(!shapes) return null;
+  const nE=(pc-7+12)%12, nA=pc;
+  let best=null;
+  for(const [str,sh] of Object.entries(shapes)){
+    const n=str==='E'?nE:nA;
+    const rels=sh.f.filter(v=>v!==null);
+    const minRel=Math.min(...rels), maxRel=Math.max(...rels);
+    let nn=n; if(nn+minRel<0) nn+=12;
+    if(nn+maxRel>14) continue;
+    if(!best||nn<best.n) best={n:nn,sh};
+  }
+  if(!best) return null;
+  const f=best.sh.f.map(v=>v===null?null:v+best.n);
+  let g=best.sh.g.map((v,i)=>f[i]===null||f[i]===0?0:v);
+  // renumber fingers so they run 1..k
+  if(best.n===0){
+    const used=[...new Set(g.filter(v=>v>0))].sort((a,b)=>a-b);
+    g=g.map(v=>v>0?used.indexOf(v)+1:0);
+  }
+  return {f,g};
+}
+function accToHtml(root){
+  const d=DISPLAY[root]||root.replace('#','♯');
+  return d.length>1?`${d[0]}<span class="acc">${d[1]}</span>`:d;
+}
+const LIB={};
+for(const q of Object.keys(QUAL)){
+  for(const root of NOTES){
+    const id=root+q;
+    let v=OPEN[id]||generate(root,q);
+    if(!v) continue;
+    LIB[id]={id,root,q,f:v.f,g:v.g,html:accToHtml(root),plain:(DISPLAY[root]||root)+QUAL[q].suffix,color:COLORS[root]};
+  }
+}
+
+// Movable barre shapes, grouped by which string carries the root.
+// Frets are relative to the root fret; fingers are fixed (no open strings to renumber).
+const BARRE={
+  E:{ // root on the 6th string
+    '':    {f:[0,2,2,1,0,0],g:[1,3,4,2,1,1]},
+    'm':   {f:[0,2,2,0,0,0],g:[1,3,4,1,1,1]},
+    '7':   {f:[0,2,0,1,0,0],g:[1,3,1,2,1,1]},
+    'm7':  {f:[0,2,0,0,0,0],g:[1,3,1,1,1,1]},
+    'maj7':{f:[0,2,1,1,0,0],g:[1,4,2,3,1,1]},
+  },
+  A:{ // root on the 5th string
+    '':    {f:[null,0,2,2,2,0],g:[0,1,3,3,3,1]},
+    'm':   {f:[null,0,2,2,1,0],g:[0,1,3,4,2,1]},
+    '7':   {f:[null,0,2,0,2,0],g:[0,1,3,1,4,1]},
+    'm7':  {f:[null,0,2,0,1,0],g:[0,1,3,1,2,1]},
+    'maj7':{f:[null,0,2,1,2,0],g:[0,1,3,2,4,1]},
+  },
+  D:{ // root on the 4th string
+    '':    {f:[null,null,0,2,3,2],g:[0,0,1,2,4,3]},
+    'm':   {f:[null,null,0,2,3,1],g:[0,0,1,3,4,2]},
+    '7':   {f:[null,null,0,2,1,2],g:[0,0,1,3,2,4]},
+    'm7':  {f:[null,null,0,2,1,1],g:[0,0,1,3,2,2]},
+    'maj7':{f:[null,null,0,2,2,2],g:[0,0,1,2,3,4]},
+  }
+};
+const OPEN_PC={E:7,A:0,D:5};                 // open pitch of each root string
+const SHAPE_RANK={E:1,A:2,D:3,D2a:4,D2b:5,D3a:6,D3b:7,D3t:8};
+const SHAPE_NOTE={E:'E-shape barre · 6th-string root',A:'A-shape barre · 5th-string root',D:'D-shape · 4th-string root'};
+const SHAPE_SHORT={E:'E shape',A:'A shape',D:'D shape'};
+const grip=c=>c.f.join(',');
+const BASE_GRIPS={};
+Object.values(LIB).forEach(c=>{BASE_GRIPS[grip(c)]=c.id;});
+for(const str of ['E','A','D']){
+  for(const [q,sh] of Object.entries(BARRE[str])){
+    for(const root of NOTES){
+      const n=(NOTES.indexOf(root)-OPEN_PC[str]+12)%12 || 12;   // open position -> octave barre
+      const f=sh.f.map(v=>v===null?null:v+n);
+      const twin=BASE_GRIPS[f.join(',')];
+      if(twin){ Object.assign(LIB[twin],{shape:str,pos:n}); continue; }  // default voicing already is this barre
+      const id=root+q+'/'+str;
+      LIB[id]={id,root,q,shape:str,pos:n,variant:true,
+        f,g:sh.g.slice(),
+        html:accToHtml(root),plain:(DISPLAY[root]||root)+QUAL[q].suffix,color:COLORS[root]};
+    }
+  }
+}
+
+// ---------- Open-voiced (spread) jazz forms: drop 2 and drop 3 ----------
+// A close four-note voicing has all tones inside one octave. Dropping a voice an
+// octave spreads it past the octave -> an "open" voicing. Root-position drop 2 comes
+// from the close 2nd inversion, root-position drop 3 from the close 3rd inversion.
+const STRING_MIDI=[40,45,50,55,59,64];
+const CHORD_TONES={'maj7':[0,4,7,11],'m7':[0,3,7,10],'7':[0,4,7,10],'m7b5':[0,3,6,10],
+                   '6':[0,4,7,9],'m6':[0,3,7,9]};
+const OPENV_FORMS={
+  D2a:{strings:[1,2,3,4],which:2,inv:2,short:'drop 2 · 5432',note:'open voiced · drop 2 · strings 5-4-3-2'},
+  D2b:{strings:[2,3,4,5],which:2,inv:2,short:'drop 2 · 4321',note:'open voiced · drop 2 · strings 4-3-2-1'},
+  D3a:{strings:[0,2,3,4],which:3,inv:3,short:'drop 3 · 6432',note:'open voiced · drop 3 · strings 6-4-3-2'},
+  D3b:{strings:[1,3,4,5],which:3,inv:3,short:'drop 3 · 5321',note:'open voiced · drop 3 · strings 5-3-2-1'},
+  D3t:{strings:[0,2,3,4],voicing:[0,12,16,19],quals:[''],short:'open triad · 6432',note:'open voiced · triad · strings 6-4-3-2'},
+};
+const OPENV_FING={                                   // bass -> treble, hand-set per form
+  'maj7|D2a':[1,3,2,4],'m7|D2a':[1,3,1,2],'7|D2a':[1,3,1,4],'m7b5|D2a':[1,2,1,3],
+  'maj7|D2b':[1,3,3,3],'m7|D2b':[1,4,2,2],'7|D2b':[1,3,2,4],'m7b5|D2b':[1,2,2,2],
+  'maj7|D3a':[1,3,4,2],'m7|D3a':[2,3,3,3],'7|D3a':[1,2,4,3],'m7b5|D3a':[2,4,3,1],
+  '6|D2a':[2,3,1,4],'6|D2b':[1,3,1,4],'6|D3a':[2,1,4,3],'6|D3b':[2,1,4,3],
+  'm6|D2a':[2,4,1,3],'m6|D2b':[1,3,1,2],'m6|D3a':[2,1,3,4],'m6|D3b':[2,1,4,3],
+  '|D3t':[1,4,3,2],
+  'maj7|D3b':[1,2,4,1],'m7|D3b':[1,1,2,1],'7|D3b':[1,1,3,1],'m7b5|D3b':[2,3,4,1],
+};
+Object.entries(OPENV_FORMS).forEach(([k,v])=>{SHAPE_NOTE[k]=v.note;SHAPE_SHORT[k]=v.short;});
+function closeVoicing(t,inv){const out=[];let prev=-99;
+  for(let j=0;j<4;j++){let p=t[(inv+j)%4];while(p<=prev)p+=12;out.push(p);prev=p;}return out;}
+function dropVoice(v,which){const a=v.slice();a[4-which]-=12;return a.sort((x,y)=>x-y);}
+const OPENV_JOBS=[];
+for(const [fid,form] of Object.entries(OPENV_FORMS)){
+  if(form.voicing){ for(const q of form.quals) OPENV_JOBS.push({q,fid,form,v:form.voicing}); }
+  else for(const q of Object.keys(CHORD_TONES)) OPENV_JOBS.push({q,fid,form,v:dropVoice(closeVoicing(CHORD_TONES[q],form.inv),form.which)});
+}
+{
+  for(const {q,fid,form,v} of OPENV_JOBS){
+    const fing=OPENV_FING[q+'|'+fid];
+    for(const root of NOTES){
+      const pc=(NOTES.indexOf(root)+9)%12;                    // NOTES index -> MIDI pitch class
+      let frets=null;
+      for(let base=pc+24;base<=pc+72;base+=12){
+        const fr=v.map((x,i)=>base+x-STRING_MIDI[form.strings[i]]);
+        if(fr.every(f=>f>=0&&f<=15)&&Math.max(...fr)-Math.min(...fr)<=5){frets=fr;break;}
+      }
+      if(!frets) continue;
+      const f=[null,null,null,null,null,null], g=[0,0,0,0,0,0];
+      form.strings.forEach((sIdx,i)=>{f[sIdx]=frets[i];g[sIdx]=fing[i];});
+      const twin=BASE_GRIPS[f.join(',')];
+      if(twin){ Object.assign(LIB[twin],{shape:fid,pos:Math.min(...frets)}); continue; }
+      const id=root+q+'/'+fid;
+      LIB[id]={id,root,q,shape:fid,pos:Math.min(...frets),variant:true,f,g,
+        html:accToHtml(root),plain:(DISPLAY[root]||root)+QUAL[q].suffix,color:COLORS[root]};
+      BASE_GRIPS[f.join(',')]=id;
+    }
+  }
+}
+const ids=Object.keys(LIB);
+const byQ=(...qs)=>ids.filter(id=>!LIB[id].variant&&qs.includes(LIB[id].q));
+const byShape=(...ss)=>ids.filter(id=>ss.includes(LIB[id].shape));
+const SETS={
+  all:{label:'All chords',list:ids},
+  open:{label:'Open essentials',list:['A','C','D','E','G','Am','Dm','Em','A7','B7','C7','D7','E7','G7','Cmaj7','Dmaj7','Amaj7','Am7','Em7','Dm7','Cadd9','Dsus2','Dsus4','Asus2','Asus4','Esus4','E5','A5','D5','G5']},
+  major:{label:'Major chords',list:byQ('')},
+  minor:{label:'Minor chords',list:byQ('m')},
+  power:{label:'Power chords',list:byQ('5')},
+  seventh:{label:'Blues · dominant 7',list:byQ('7','9')},
+  jazz:{label:'Jazz voicings',list:byQ('maj7','m7','9','13','6/9','m7b5','dim7')},
+  sus:{label:'Sus & add chords',list:byQ('sus2','sus4','7sus4','add9')},
+  barre:{label:'Barre · all shapes',list:byShape('E','A','D')},
+  openv:{label:'Open voiced · jazz',list:byShape('D2a','D2b','D3a','D3b','D3t')},
+  barreE:{label:'Barre · E shape',list:byShape('E')},
+  barreA:{label:'Barre · A shape',list:byShape('A')},
+  barreD:{label:'Barre · D shape',list:byShape('D')},
+};
+
+/* ---------- Musical keys ---------- */
+const STRING_PC=[7,0,5,10,2,7];                 // open pitch class of each string, low E -> high e
+const SCALES={major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10]};
+// harmonic-minor borrowings every minor key actually uses: V, V7, vii°, vii°7
+const MINOR_EXTRA=[[7,''],[7,'7'],[11,'dim'],[11,'dim7']];
+const KEY_ROOTS=[['C','major'],['G','major'],['D','major'],['A','major'],['E','major'],
+                 ['F','major'],['A#','major'],['D#','major'],
+                 ['A','minor'],['E','minor'],['B','minor'],['F#','minor'],['C#','minor'],
+                 ['D','minor'],['G','minor'],['C','minor']];
+const KEYS=KEY_ROOTS.map(([tonic,mode])=>({id:tonic+(mode==='minor'?'m':''),tonic,mode,
+  label:(DISPLAY[tonic]||tonic)+' '+mode}));
+const KEY_LABEL={}; KEYS.forEach(k=>KEY_LABEL[k.id]=k.label);
+const voicedPCs=c=>c.f.map((v,i)=>v===null?null:(STRING_PC[i]+v)%12).filter(v=>v!==null);
+const KEY_SETS={};
+for(const k of KEYS){
+  const t=NOTES.indexOf(k.tonic), scale=new Set(SCALES[k.mode].map(v=>(t+v)%12));
+  const set=new Set(ids.filter(id=>voicedPCs(LIB[id]).every(pc=>scale.has(pc))));
+  if(k.mode==='minor') for(const [deg,q] of MINOR_EXTRA){
+    const r=NOTES[(t+deg)%12];
+    ids.forEach(id=>{const c=LIB[id]; if(c.root===r&&c.q===q) set.add(id);});
+  }
+  KEY_SETS[k.id]=set;
+}
+/* difficulty tiers:
+   Beginner     — open-position triads / open 7ths, little or no barring
+   Intermediate — seventh-chord harmony and ii–V–I motion, barre shapes, one key centre
+   Advanced     — substitute or altered harmony, modulation, longer forms / faster changes */
+const LEVELS={
+  Beginner:'#2E8B57',
+  Intermediate:'#C1841F',
+  Advanced:'#B0483A'
+};
+const PROGS=[
+  {id:'',label:'None · free study',chords:[]},
+  {id:'p1',label:'I – V – vi – IV (C)',level:'Beginner',chords:['C','G','Am','F']},
+  {id:'p2',label:'I – IV – V (G)',level:'Beginner',chords:['G','C','D']},
+  {id:'p3',label:'50s · I – vi – IV – V (C)',level:'Beginner',chords:['C','Am','F','G']},
+  {id:'p4',label:'vi – IV – I – V (Am)',level:'Beginner',chords:['Am','F','C','G']},
+  {id:'p5',label:'12-bar blues (A)',level:'Beginner',chords:['A7','A7','A7','A7','D7','D7','A7','A7','E7','D7','A7','E7']},
+  {id:'p6',label:'ii – V – I (C)',level:'Intermediate',chords:['Dm7','G7','Cmaj7']},
+  {id:'p7',label:'Jazz turnaround I – vi – ii – V (C)',level:'Intermediate',chords:['Cmaj7','Am7','Dm7','G7']},
+  {id:'p8',label:'Minor ii – V – i (Am)',level:'Intermediate',chords:['Bm7b5','E7','Am7']},
+  {id:'p9',label:'Autumn Leaves (Gm)',level:'Intermediate',chords:['Cm7','F7','A#maj7','D#maj7','Am7b5','D7','Gm7']},
+  {id:'p10',label:'Andalusian · Am – G – F – E',level:'Beginner',chords:['Am','G','F','E']},
+  {id:'p11',label:'Canon (D)',level:'Intermediate',chords:['D','A','Bm','F#m','G','D','G','A']},
+  {id:'p12',label:'Pop rock (E)',level:'Intermediate',chords:['E','B','C#m','A']},
+  {id:'p13',label:'Punk power · I – IV – V (E)',level:'Beginner',chords:['E5','A5','B5']},
+  {id:'p14',label:'Folk · G – Em – C – D',level:'Beginner',chords:['G','Em','C','D']},
+  /* --- jazz --- */
+  {id:'p15',label:'Take the “A” Train (C)',level:'Intermediate',chords:['Cmaj7','D7','Dm7','G7']},
+  {id:'p16',label:'Rhythm changes · A section (B♭)',level:'Intermediate',chords:['A#maj7','Gm7','Cm7','F7']},
+  {id:'p17',label:'Jazz blues · 12-bar (F)',level:'Intermediate',chords:['F7','A#7','F7','Cm7','A#7','Bdim7','F7','Dm7','Gm7','C7','F7','C7']},
+  {id:'p18',label:'iii – vi – ii – V (C)',level:'Intermediate',chords:['Em7','Am7','Dm7','G7']},
+  {id:'p19',label:'Backdoor ii – V · iv – ♭VII7 – I (C)',level:'Intermediate',chords:['Fm7','A#7','Cmaj7']},
+  {id:'p20',label:'Tritone sub · ii – ♭II7 – I (C)',level:'Advanced',chords:['Dm7','C#7','Cmaj7']},
+  {id:'p21',label:'Satin Doll (C)',level:'Advanced',chords:['Dm7','G7','Em7','A7','Am7','D7','G#m7','C#7','Cmaj7']},
+  {id:'p22',label:'Fly Me to the Moon · circle of 4ths (Am)',level:'Intermediate',chords:['Am7','Dm7','G7','Cmaj7','Fmaj7','Bm7b5','E7','Am7']},
+  {id:'p23',label:'Giant Steps · Coltrane cycle',level:'Advanced',chords:['Bmaj7','D7','Gmaj7','A#7','D#maj7']},
+  /* --- samba / bossa nova --- */
+  {id:'p24',label:'Blue Bossa (Cm)',level:'Advanced',chords:['Cm7','Fm7','Dm7b5','G7','Cm7','D#m7','G#7','C#maj7','Dm7b5','G7','Cm7']},
+  {id:'p25',label:'Girl from Ipanema · A section (F)',level:'Intermediate',chords:['Fmaj7','G7','Gm7','F#7','Fmaj7']},
+  {id:'p26',label:'Black Orpheus · Manhã de Carnaval (Am)',level:'Advanced',chords:['Am7','Bm7b5','E7','Am7','Dm7','G7','Cmaj7','Fmaj7','Bm7b5','E7','Am7']},
+  {id:'p27',label:'Só Danço Samba · A section (F)',level:'Intermediate',chords:['Fmaj7','G7','Gm7','C7']},
+  {id:'p28',label:'Bossa turnaround · I – VI7 – ii – V (C)',level:'Intermediate',chords:['Cmaj7','A7','Dm7','G7']},
+];
+
+/* ---------- Diagram ---------- */
+function diagramSVG(c){
+  const S=6, sx=52, fy=64, W=sx*5, top=48, left=64;
+  const fretted=c.f.filter(v=>v!==null&&v>0);
+  const minF=fretted.length?Math.min(...fretted):1, maxF=fretted.length?Math.max(...fretted):1;
+  const base=(minF<=2&&maxF<=5)?1:minF;
+  const H=top+fy*5+20, TW=left+W+left;
+  const x=i=>left+i*sx, y=fr=>top+(fr-base+0.5)*fy;
+  let s=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TW} ${H}" font-family="${getComputedStyle(document.body).getPropertyValue('--mono')}">`;
+  // frets
+  for(let k=0;k<=5;k++){
+    const yy=top+k*fy;
+    if(k===0&&base===1) s+=`<rect x="${left-2}" y="${yy-5}" width="${W+4}" height="8" rx="2" fill="var(--ink)"/>`;
+    else s+=`<line x1="${left}" x2="${left+W}" y1="${yy}" y2="${yy}" stroke="var(--ink)" stroke-opacity="${k===0?.9:.45}" stroke-width="2"/>`;
+  }
+  // strings
+  for(let i=0;i<S;i++) s+=`<line x1="${x(i)}" x2="${x(i)}" y1="${top}" y2="${top+fy*5}" stroke="var(--ink)" stroke-opacity=".8" stroke-width="${1.6+ (5-i)*.25}"/>`;
+  // base fret label
+  if(base>1) s+=`<text x="${left-22}" y="${y(base)+5}" text-anchor="end" font-size="15" fill="var(--ink)" fill-opacity=".7">${base}fr</text>`;
+  // open / mute markers
+  c.f.forEach((v,i)=>{
+    const cx=x(i), cy=top-24;
+    if(v===null) s+=`<path d="M${cx-6} ${cy-6}l12 12M${cx+6} ${cy-6}l-12 12" stroke="var(--ink)" stroke-opacity=".55" stroke-width="2.2" stroke-linecap="round"/>`;
+    else if(v===0) s+=`<circle cx="${cx}" cy="${cy}" r="6.5" fill="none" stroke="var(--ink)" stroke-width="2.2"/>`;
+  });
+  // barres
+  const bars=[];
+  for(let fg=1;fg<=4;fg++){
+    const idx=c.g.map((v,i)=>v===fg&&c.f[i]>0?i:-1).filter(i=>i>=0);
+    if(idx.length>=2){
+      const fr=c.f[idx[0]];
+      const a=idx[0],b=idx[idx.length-1];
+      let ok=idx.every(i=>c.f[i]===fr)&&b-a>=1;
+      for(let i=a;i<=b&&ok;i++) if(c.f[i]===null||c.f[i]<fr) ok=false;
+      if(ok){
+        bars.push({fg,fr,a,b});
+      }
+    }
+  }
+  bars.forEach(b=>{
+    s+=`<rect x="${x(b.a)-17}" y="${y(b.fr)-17}" width="${x(b.b)-x(b.a)+34}" height="34" rx="17" fill="var(--ink)"/>`;
+  });
+  // dots
+  c.f.forEach((v,i)=>{
+    if(v===null||v===0) return;
+    const inBar=bars.find(b=>b.fr===v&&i>=b.a&&i<=b.b&&c.g[i]===b.fg);
+    if(inBar&&i!==inBar.a) return;
+    s+=`<circle cx="${x(i)}" cy="${y(v)}" r="17" fill="var(--ink)"/>`;
+    if(c.g[i]) s+=`<text x="${x(i)}" y="${y(v)+5.5}" text-anchor="middle" font-size="16" font-weight="500" fill="var(--bg)">${c.g[i]}</text>`;
+  });
+  s+='</svg>';
+  return s;
+}
+
+/* ---------- App state ---------- */
+const $=id=>document.getElementById(id);
+const st={
+  focus:'all', prog:'', key:'', shuffle:true, list:[], idx:0,
+  playing:true, duration:5000, reveal:'0',
+  startTs:performance.now(), elapsedBefore:0, revealed:true, animating:false, grid:false, progs:false,
+  palette:'sunset'
+};
+function shuffleArr(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function currentSet(){
+  const p=PROGS.find(p=>p.id===st.prog);
+  if(p&&p.chords.length) return {list:p.chords.filter(id=>LIB[id]),label:p.label,prog:true};
+  let list=SETS[st.focus].list, label=st.focus==='all'?'':SETS[st.focus].label;
+  if(st.key){
+    const ks=KEY_SETS[st.key], hit=list.filter(id=>ks.has(id));
+    if(hit.length){ list=hit; label=label?label+' · in '+KEY_LABEL[st.key]:'In '+KEY_LABEL[st.key]; }
+    else { list=ids.filter(id=>ks.has(id)); label='In '+KEY_LABEL[st.key]; }   // focus has nothing in this key
+  }
+  return {list,label:label||'All chords',prog:false};
+}
+function buildList(){
+  const s=currentSet();
+  st.list=s.prog?s.list.slice():(st.shuffle?shuffleArr(s.list):s.list.slice());
+  st.idx=0;
+}
+function revealDelay(){
+  if(st.reveal==='0') return 0;
+  if(st.reveal==='half') return st.duration/2;
+  return Math.min(+st.reveal*1000, st.duration*0.7);
+}
+function pad(n){return String(n).padStart(2,'0');}
+function render(){
+  const c=LIB[st.list[st.idx]];
+  document.documentElement.style.setProperty('--bg',c.color);
+  applyInk(document.documentElement,c.ink||pickInk(c.color));
+  $('kicker').textContent=(DISPLAY[c.root]||c.root)+' '+QUAL[c.q].name+(c.shape?' · '+SHAPE_NOTE[c.shape]:'');
+  $('name').innerHTML=`<span>${c.html}</span>${QUAL[c.q].suffix?`<span class="suffix">${QUAL[c.q].suffix}</span>`:''}`;
+  $('svgHost').innerHTML=diagramSVG(c);
+  $('tab').innerHTML=c.f.map(v=>v===null?'<span class="mute">x</span>':`<span>${v}</span>`).join('');
+  const p=PROGS.find(p=>p.id===st.prog);
+  $('counter').textContent=`${pad(st.idx+1)} — ${pad(st.list.length)}`;
+  $('setLabel').textContent=currentSet().label;
+  $('posLabel').textContent=p&&p.chords.length?`bar ${st.idx+1} of ${st.list.length}`:(st.shuffle?'Shuffled':'In order');
+  const d=revealDelay();
+  st.revealed=d===0;
+  $('dwrap').classList.toggle('hidden',!st.revealed);
+  $('revealHint').classList.toggle('show',!st.revealed);
+}
+function restartTimer(){st.startTs=performance.now();st.elapsedBefore=0;}
+function go(delta){
+  if(st.animating) return;
+  st.animating=true;
+  $('card').classList.add('out');
+  setTimeout(()=>{
+    st.idx=(st.idx+delta+st.list.length)%st.list.length;
+    render(); restartTimer();
+    $('card').classList.remove('out');
+    st.animating=false;
+  },330);
+}
+function reveal(){ if(!st.revealed){st.revealed=true;$('dwrap').classList.remove('hidden');$('revealHint').classList.remove('show');} }
+function setPlaying(p){
+  st.playing=p;
+  $('icoPause').style.display=p?'':'none';
+  $('icoPlay').style.display=p?'none':'';
+  if(p) st.startTs=performance.now(); else st.elapsedBefore+= performance.now()-st.startTs;
+}
+function loop(){
+  const el=st.playing?st.elapsedBefore+(performance.now()-st.startTs):st.elapsedBefore;
+  if(!st.revealed&&el>=revealDelay()) reveal();
+  if(st.playing&&!st.animating&&!st.grid&&!st.progs&&el>=st.duration) go(1);
+  requestAnimationFrame(loop);
+}
+
+/* ---------- Controls ---------- */
+for(const [k,v] of Object.entries(SETS)){const o=document.createElement('option');o.value=k;o.textContent=v.label;$('focus').appendChild(o);}
+{const o=document.createElement('option');o.value='';o.textContent='Any key';$('key').appendChild(o);}
+for(const k of KEYS){const o=document.createElement('option');o.value=k.id;o.textContent=k.label;$('key').appendChild(o);}
+$('key').onchange=e=>{st.key=e.target.value;clearProg();$('focus').classList.remove('dim');buildList();render();restartTimer();if(st.grid)filterGrid();};
+$('focus').onchange=e=>{st.focus=e.target.value;clearProg();$('focus').classList.remove('dim');buildList();render();restartTimer();if(st.grid)filterGrid();};
+$('reveal').onchange=e=>{st.reveal=e.target.value;render();restartTimer();};
+$('speed').oninput=e=>{st.duration=+e.target.value*1000;$('speedVal').textContent=e.target.value+'s';restartTimer();};
+$('play').onclick=()=>setPlaying(!st.playing);
+$('prev').onclick=()=>go(-1);
+$('next').onclick=()=>go(1);
+$('shuffle').onclick=()=>{if(st.prog) return;st.shuffle=!st.shuffle;$('shuffle').classList.toggle('on',st.shuffle);buildList();render();restartTimer();};
+$('card').addEventListener('click',reveal);
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='SELECT'||e.target.tagName==='INPUT') return;
+  if(e.key==='g'||e.key==='G'){setGrid(!st.grid);return;}
+  if(e.key==='p'||e.key==='P'){setProgs(!st.progs);return;}
+  if(st.grid){ if(e.key==='Escape') setGrid(false); return; }
+  if(st.progs){ if(e.key==='Escape') setProgs(false); return; }
+  if(e.code==='Space'){e.preventDefault();setPlaying(!st.playing);}
+  else if(e.key==='ArrowRight') go(1);
+  else if(e.key==='ArrowLeft') go(-1);
+  else if(e.key==='Enter') reveal();
+});
+
+
+/* ---------- Chord grid ---------- */
+const QORDER=['','m','dim','5','6','m6','7','m7','maj7','9','13','6/9','m7b5','dim7','sus2','sus4','7sus4','add9'];
+const rank=c=>c.variant?SHAPE_RANK[c.shape]:0;
+const GRID_IDS=ids.slice().sort((a,b)=>{const A=LIB[a],B=LIB[b];
+  return (NOTES.indexOf(A.root)-NOTES.indexOf(B.root))||(QORDER.indexOf(A.q)-QORDER.indexOf(B.q))||(rank(A)-rank(B));});
+const norm=s=>s.toLowerCase().replace(/♭/g,'b').replace(/♯/g,'#').replace(/°/g,'dim').replace(/\s+/g,'');
+// searchable names per chord: display name (Bb7) + sharp/flat alias (A#7)
+const NAMES={};
+for(const id of GRID_IDS){const c=LIB[id];const suf=QUAL[c.q].suffix;const alt={'A#':'Bb','C#':'Db','D#':'Eb','F#':'Gb','G#':'Ab'}[c.root];
+  NAMES[id]=[norm(c.plain),norm(c.root+suf),norm((alt||c.root)+suf),norm(c.root+c.q)].filter((v,i,a)=>a.indexOf(v)===i);}
+let gridBuilt=false;
+function buildGrid(){
+  const host=$('gridBody'); const frag=document.createDocumentFragment();
+  for(const id of GRID_IDS){
+    const c=LIB[id]; const t=document.createElement('div'); t.className='tile'; t.dataset.id=id; t.style.background=c.color; t.style.setProperty('--bg',c.color); applyInk(t,c.ink||pickInk(c.color));
+    t.innerHTML=`<div class="tn">${c.html}<small>${QUAL[c.q].suffix}</small></div><div class="tq">${c.shape?SHAPE_SHORT[c.shape]+' · '+(c.pos?c.pos+'fr':'open'):QUAL[c.q].name}</div>${diagramSVG(c)}<div class="tf">${c.f.map(v=>v===null?'x':v).join(' ')}</div>`;
+    t.onclick=()=>pickChord(id);
+    frag.appendChild(t);
+  }
+  host.appendChild(frag); gridBuilt=true;
+}
+function activeFilter(){
+  const s=currentSet();
+  const everything=!st.prog&&!st.key&&st.focus==='all';
+  return {ids:everything?null:new Set(s.list),label:s.label};
+}
+function filterGrid(){
+  const q=norm($('search').value);
+  const filter=activeFilter();
+  $('gridTitle').textContent=filter.label;
+  let shown=0, exactId=null, total=0;
+  for(const t of $('gridBody').children){
+    if(!t.dataset.id) continue;
+    const inFilter=!filter.ids||filter.ids.has(t.dataset.id);
+    if(inFilter) total++;
+    const names=NAMES[t.dataset.id];
+    const match=inFilter&&(!q||names.some(n=>n.startsWith(q)));
+    const exact=inFilter&&q&&names.includes(q);
+    t.style.display=match?'':'none'; t.classList.toggle('exact',!!exact);
+    if(match) shown++; if(exact&&!exactId) exactId=t.dataset.id;
+  }
+  $('searchCount').textContent=q?`${shown} match${shown===1?'':'es'}`:`${total} chord${total===1?'':'s'}`;
+  let empty=$('gridBody').querySelector('.grid-empty');
+  if(shown===0){ if(!empty){empty=document.createElement('div');empty.className='grid-empty';$('gridBody').appendChild(empty);} empty.textContent=q?`No chord named “${$('search').value}”`:`No chords in ${filter.label}`; }
+  else if(empty) empty.remove();
+  return exactId;
+}
+let wasPlaying=true;
+function setGrid(on){
+  st.grid=on;
+  if(on){
+    if(st.progs) setProgs(false);
+    if(!gridBuilt) buildGrid();
+    wasPlaying=st.playing; if(st.playing) setPlaying(false);
+    document.body.classList.add('gridmode'); $('grid').classList.add('open'); $('gridBtn').classList.add('on'); syncHeadHeight();
+    $('search').value=''; filterGrid(); $('grid').scrollTop=0;   // reset before measuring
+    playEntrance(); setTimeout(()=>$('search').focus(),50);
+  } else {
+    document.body.classList.remove('gridmode'); $('grid').classList.remove('open'); $('gridBtn').classList.remove('on');
+    render(); restartTimer(); if(wasPlaying) setPlaying(true);
+  }
+}
+function pickChord(id){
+  let i=st.list.indexOf(id);
+  if(i<0){ // not in the current set → switch to All chords, place it first
+    clearProg();
+    st.focus='all'; $('focus').value='all'; st.key=''; $('key').value=''; buildList();
+    st.list=[id,...st.list.filter(x=>x!==id)]; i=0;
+  }
+  st.idx=i; wasPlaying=st.playing||wasPlaying; setGrid(false);
+}
+const STEP=0.011;
+let io=null;
+function playEntrance(){
+  const host=$('gridBody'), scroller=$('grid');
+  const cols=getComputedStyle(host).gridTemplateColumns.split(' ').filter(Boolean).length||1;
+  const tiles=[...host.children].filter(t=>t.dataset.id);
+  if(io) io.disconnect();
+  tiles.forEach(t=>t.classList.remove('enter','leave','pending','shown'));
+  void host.offsetWidth;                                   // restart the animation
+  const fold=scroller.getBoundingClientRect().bottom;
+  const rects=tiles.map(t=>t.getBoundingClientRect());     // batch reads before writes
+
+  io=new IntersectionObserver(es=>{
+    const ins=[], outs=[];
+    for(const e of es){
+      const t=e.target, shown=t.classList.contains('shown');
+      if(e.intersectionRatio>=0.6){ if(!shown) ins.push(t); }
+      // <60% visible AND clipped at the top edge -> it is sliding under the header
+      else if(shown&&e.rootBounds&&e.boundingClientRect.top<e.rootBounds.top) outs.push(t);
+    }
+    if(!ins.length&&!outs.length) return;
+    ins.concat(outs).forEach(t=>t.classList.remove('enter','leave'));
+    void host.offsetWidth;                                 // one reflow, then restart
+    ins.forEach(t=>{
+      t.style.setProperty('--d',(+t.dataset.col||0)*STEP+'s');   // ripple across the row
+      t.classList.remove('pending'); t.classList.add('shown','enter');
+    });
+    outs.forEach(t=>{
+      t.style.setProperty('--d',(+t.dataset.col||0)*STEP+'s');
+      t.classList.remove('shown'); t.classList.add('leave');
+    });
+  },{root:scroller,threshold:0.6});
+
+  tiles.forEach((t,i)=>{
+    const col=i%cols;
+    t.dataset.col=col;
+    if(rects[i].top<fold){                                 // on screen now -> diagonal cascade
+      t.style.setProperty('--d',((i/cols|0)+col)*STEP+'s');
+      t.classList.add('shown','enter');
+    } else t.classList.add('pending');
+    io.observe(t);
+  });
+}
+function syncHeadHeight(){const el=document.querySelector(st.progs?'.prog-head':'.grid-head');const h=el?el.offsetHeight:0;if(h) document.documentElement.style.setProperty('--head-h',h+'px');}
+addEventListener('resize',()=>{if(st.grid||st.progs) syncHeadHeight();});
+
+/* ---------- Progressions screen ---------- */
+function clearProg(){
+  st.prog='';
+  $('focus').classList.remove('dim'); $('key').classList.remove('dim');
+  $('progBtn').classList.remove('active');
+  setShuffleLock(false);
+}
+// a progression is a fixed bar order, so shuffle is switched off and locked out while one is playing
+function setShuffleLock(on){
+  const b=$('shuffle');
+  b.classList.toggle('dim',on);
+  b.setAttribute('aria-disabled',on?'true':'false');
+  b.dataset.tip=on?'Shuffle · off during a progression':'Shuffle';
+}
+function applyProg(id){
+  st.prog=id;
+  const on=!!(PROGS.find(p=>p.id===id)||{}).chords?.length;
+  $('focus').classList.toggle('dim',on); $('key').classList.toggle('dim',on);
+  $('progBtn').classList.toggle('active',on);
+  if(on&&st.shuffle){ st.shuffle=false; $('shuffle').classList.remove('on'); }
+  setShuffleLock(on);
+  buildList(); render(); restartTimer();
+}
+let progsBuilt=false;
+function buildProgs(){
+  const host=$('progBody'), frag=document.createDocumentFragment();
+  for(const p of PROGS){
+    const b=document.createElement('button');
+    b.className='prog-row'; b.dataset.id=p.id; b.type='button';
+    const chords=p.chords.length
+      ? p.chords.map(id=>LIB[id]?`<span data-cid="${id}" style="--pc:${tint(LIB[id].color)}">${LIB[id].plain}</span>`:id).join('<i>·</i>')
+      : `<span>every chord in the current focus</span>`;
+    const badge=p.level?`<span class="prog-level" data-lvl="${p.level}" style="--lc:${tint(LEVELS[p.level])}">${p.level}</span>`:'';
+    b.innerHTML=`${badge}<span class="prog-name">${p.chords.length?p.label:'Free study'}</span><span class="prog-chords">${chords}</span>`;
+    b.onclick=()=>pickProg(p.id);
+    frag.appendChild(b);
+  }
+  host.appendChild(frag); progsBuilt=true;
+}
+function pickProg(id){
+  applyProg(id);
+  wasPlaying=true;                       // selecting a progression starts it playing
+  setProgs(false);
+}
+function setProgs(on){
+  st.progs=on;
+  if(on){
+    if(st.grid) setGrid(false);
+    if(!progsBuilt) buildProgs();
+    wasPlaying=st.playing; if(st.playing) setPlaying(false);
+    document.body.classList.add('progmode'); $('progs').classList.add('open'); $('progBtn').classList.add('on');
+    syncHeadHeight(); $('progs').scrollTop=0;
+    const rows=[...$('progBody').children];
+    rows.forEach(r=>{r.classList.remove('enter');r.classList.toggle('current',r.dataset.id===st.prog);});
+    void $('progBody').offsetWidth;
+    rows.forEach((r,i)=>{r.style.setProperty('--d',i*0.03+'s');r.classList.add('enter');});
+  } else {
+    document.body.classList.remove('progmode'); $('progs').classList.remove('open'); $('progBtn').classList.remove('on');
+    render(); restartTimer(); if(wasPlaying) setPlaying(true);
+  }
+}
+$('progBtn').onclick=()=>setProgs(!st.progs);
+$('allBtn').onclick=()=>{
+  // Home: wipe every user selection back to the app's out-of-the-box defaults and replay the intro
+  toggleSettings(false);
+  if(st.progs) setProgs(false);
+  if(st.grid) setGrid(false);
+  clearProg();
+  st.focus='all';   $('focus').value='all';   $('focus').classList.remove('dim');
+  st.key='';        $('key').value='';        $('key').classList.remove('dim');
+  st.shuffle=true;  $('shuffle').classList.add('on');
+  st.duration=5000; $('speed').value=5;        $('speedVal').textContent='5s';
+  st.reveal='0';    $('reveal').value='0';
+  setPlaying(true);
+  buildList(); render(); restartTimer();
+  runSplash();
+};
+$('gridBtn').onclick=()=>setGrid(!st.grid);
+$('search').addEventListener('input',filterGrid);
+$('search').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){const ex=filterGrid(); const first=[...$('gridBody').children].find(t=>t.dataset.id&&t.style.display!=='none'); const id=ex||(first&&first.dataset.id); if(id) pickChord(id);}
+  else if(e.key==='Escape'){setGrid(false);}
+});
+
+/* ---------- Palette switcher & settings overlay ---------- */
+function applyPaletteObject(pal){
+  applyTheme(pal.theme);
+  Object.assign(COLORS,pal.colors);
+  for(const k of ids){
+    LIB[k].color=COLORS[LIB[k].root];
+    const forced=pal.keyInk&&pal.keyInk[LIB[k].root];
+    LIB[k].ink=forced||pickInk(LIB[k].color);
+  }
+  if(LIB[st.list[st.idx]]){
+    document.documentElement.style.setProperty('--bg',LIB[st.list[st.idx]].color);
+    applyInk(document.documentElement,LIB[st.list[st.idx]].ink);
+  }
+  for(const t of $('gridBody').children){
+    const c=LIB[t.dataset.id]; if(!c) continue;
+    t.style.background=c.color; t.style.setProperty('--bg',c.color); applyInk(t,c.ink);
+  }
+  for(const s of $('progBody').querySelectorAll('span[data-cid]')){
+    const c=LIB[s.dataset.cid]; if(c) s.style.setProperty('--pc',tint(c.color));
+  }
+  for(const s of $('progBody').querySelectorAll('.prog-level[data-lvl]')){
+    const base=LEVELS[s.dataset.lvl]; if(base) s.style.setProperty('--lc',tint(base));
+  }
+}
+function applyPalette(id){
+  const pal=PALETTES.find(p=>p.id===id)||PALETTES[0];
+  applyPaletteObject(pal);
+}
+function savePalettes(){ try{ localStorage.setItem('chordhiit_palettes',JSON.stringify(PALETTES)); }catch(e){} }
+const CHECK_SVG='<svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>';
+const XMARK_SVG='<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+function buildPaletteMenu(){
+  const host=$('paletteMenu');
+  host.innerHTML=PALETTES.map(p=>{
+    const isDefault=p.id===st.palette, nm=escapeHtml(p.name);
+    return `<div class="palette-item${isDefault?' active':''}" data-pid="${p.id}">
+      <button type="button" class="palette-row" data-pid="${p.id}" role="menuitem">
+        <span class="check">${isDefault?CHECK_SVG:''}</span>
+        <span class="dots">${PALETTE_SAMPLE.map(n=>`<span style="background:${p.colors[n]}"></span>`).join('')}</span>
+        <span class="pname">${nm}</span>
+      </button>
+      ${isDefault?'':`<button type="button" class="palette-del" data-pid="${p.id}" aria-label="Delete ${nm}">${XMARK_SVG}</button>`}
+    </div>`;
+  }).join('');
+  host.querySelectorAll('.palette-row').forEach(b=>{ b.onclick=()=>setPalette(b.dataset.pid); });
+  host.querySelectorAll('.palette-del').forEach(b=>{ b.onclick=e=>{ e.stopPropagation(); deletePalette(b.dataset.pid); }; });
+}
+function setPalette(id){
+  st.palette=id;
+  applyPalette(id);
+  try{ localStorage.setItem('chordhiit_palette',id); }catch(e){}
+  buildPaletteMenu();
+  populateCustomFields();
+}
+function deletePalette(id){
+  if(id===st.palette) return;            // the current default is never deletable
+  if(PALETTES.length<=1) return;
+  const i=PALETTES.findIndex(p=>p.id===id);
+  if(i<0) return;
+  PALETTES.splice(i,1);
+  savePalettes();
+  buildPaletteMenu();
+}
+function createPalette(){
+  const base=PALETTES.find(p=>p.id===st.palette)||PALETTES[0];
+  const pal={id:newPaletteId(),name:randomPaletteName(),
+    colors:Object.assign({},base.colors),
+    theme:Object.assign({},DEFAULT_THEME,base.theme||{})};
+  if(base.keyInk) pal.keyInk=Object.assign({},base.keyInk);
+  PALETTES.push(pal);
+  savePalettes();
+  setPalette(pal.id);                    // the copy becomes the active default, ready to edit
+  const row=$('paletteMenu').querySelector('.palette-item[data-pid="'+pal.id+'"]');
+  if(row) row.scrollIntoView({block:'nearest'});
+}
+$('paletteNew').onclick=createPalette;
+
+/* settings overlay open/close */
+function toggleSettings(force){
+  const open=force!==undefined?force:!$('settingsOverlay').classList.contains('open');
+  $('settingsOverlay').classList.toggle('open',open);
+  document.body.classList.toggle('settings-open',open);
+  $('paletteToggle').setAttribute('aria-expanded',open?'true':'false');
+  if(open) populateCustomFields();
+}
+$('paletteToggle').onclick=e=>{ e.stopPropagation(); toggleSettings(); };
+$('settingsBackdrop').onclick=()=>toggleSettings(false);
+$('settingsClose').onclick=()=>toggleSettings(false);
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') toggleSettings(false); });
+
+/* theme editor — always edits whichever palette is the current default */
+function selectedPalette(){ return PALETTES.find(p=>p.id===st.palette)||PALETTES[0]; }
+function paletteSource(pal){
+  const t=Object.assign({},DEFAULT_THEME,pal.theme||{});
+  const keys={}; NATURAL_KEYS.forEach(n=>keys[n]=normHex(pal.colors[n])||DEFAULT_THEME.dark);
+  const keyInk={}; NATURAL_KEYS.forEach(n=>keyInk[n]=(pal.keyInk&&pal.keyInk[n])||pickInk(keys[n]));
+  return {bg:t.pageBg,dark:t.dark,light:t.light,keys,keyInk};
+}
+function wirePairedField(colorId,hexId,onChange){
+  const c=$(colorId), h=$(hexId);
+  c.oninput=()=>{ h.value=c.value.toUpperCase(); h.classList.remove('invalid'); onChange(); };
+  h.oninput=()=>{
+    const v=normHex(h.value);
+    if(v){ h.classList.remove('invalid'); c.value=v; onChange(); }
+    else h.classList.add('invalid');
+  };
+}
+function setInkButton(btn,mode){
+  btn.dataset.mode=mode;
+  btn.textContent=mode==='dark'?'Dark':'Light';
+}
+function buildCustomKeyFields(){
+  const host=$('custKeys');
+  host.innerHTML=NATURAL_KEYS.map(n=>`
+    <div class="key-field">
+      <span class="kf-letter">${n}</span>
+      <input type="color" id="key_${n}_c">
+      <input type="text" id="key_${n}_h" maxlength="7" spellcheck="false">
+      <button type="button" class="kf-ink" id="key_${n}_ink"></button>
+    </div>`).join('');
+  NATURAL_KEYS.forEach(n=>wirePairedField('key_'+n+'_c','key_'+n+'_h',applyCustomDraft));
+  NATURAL_KEYS.forEach(n=>{
+    const btn=$('key_'+n+'_ink');
+    setInkButton(btn,'light');
+    btn.onclick=()=>{ setInkButton(btn,btn.dataset.mode==='dark'?'light':'dark'); applyCustomDraft(); };
+  });
+}
+buildCustomKeyFields();
+wirePairedField('custBg','custBgHex',applyCustomDraft);
+wirePairedField('custDark','custDarkHex',applyCustomDraft);
+wirePairedField('custLight','custLightHex',applyCustomDraft);
+
+function populateCustomFields(){
+  const pal=selectedPalette(), s=paletteSource(pal);
+  $('editTarget').textContent=pal.name;
+  $('custBg').value=s.bg; $('custBgHex').value=s.bg;
+  $('custDark').value=s.dark; $('custDarkHex').value=s.dark;
+  $('custLight').value=s.light; $('custLightHex').value=s.light;
+  NATURAL_KEYS.forEach(n=>{
+    $('key_'+n+'_c').value=s.keys[n]; $('key_'+n+'_h').value=s.keys[n];
+    setInkButton($('key_'+n+'_ink'),s.keyInk[n]);
+  });
+  ['custBgHex','custDarkHex','custLightHex'].forEach(id=>$(id).classList.remove('invalid'));
+  NATURAL_KEYS.forEach(n=>$('key_'+n+'_h').classList.remove('invalid'));
+  const btn=$('custSave'); btn.textContent='Save changes'; btn.classList.remove('saved');
+}
+function readCustomFields(){
+  const bg=normHex($('custBgHex').value), dark=normHex($('custDarkHex').value), light=normHex($('custLightHex').value);
+  const keys={}, keyInk={}; let valid=!!(bg&&dark&&light);
+  NATURAL_KEYS.forEach(n=>{ const v=normHex($('key_'+n+'_h').value); keys[n]=v; if(!v) valid=false;
+    keyInk[n]=$('key_'+n+'_ink').dataset.mode==='dark'?'dark':'light'; });
+  return {valid,data:{bg,dark,light,keys,keyInk}};
+}
+function applyCustomDraft(){
+  const {valid,data}=readCustomFields();
+  if(!valid) return; // wait for every field to hold a valid hex before live-previewing
+  applyPaletteObject({id:st.palette,colors:deriveTwelve(data.keys),theme:{pageBg:data.bg,dark:data.dark,light:data.light},keyInk:data.keyInk});
+}
+$('custSave').onclick=()=>{
+  const {valid,data}=readCustomFields();
+  if(!valid){
+    ['custBgHex','custDarkHex','custLightHex'].forEach(id=>{ if(!normHex($(id).value)) $(id).classList.add('invalid'); });
+    NATURAL_KEYS.forEach(n=>{ if(!normHex($('key_'+n+'_h').value)) $('key_'+n+'_h').classList.add('invalid'); });
+    return;
+  }
+  const i=PALETTES.findIndex(p=>p.id===st.palette);
+  const pal={id:st.palette,name:i>=0?PALETTES[i].name:randomPaletteName(),
+    colors:deriveTwelve(data.keys),theme:{pageBg:data.bg,dark:data.dark,light:data.light},keyInk:data.keyInk};
+  if(i>=0) PALETTES[i]=pal; else PALETTES.push(pal);
+  savePalettes();
+  try{ localStorage.setItem('chordhiit_palette',pal.id); }catch(e){}
+  applyPaletteObject(pal);
+  buildPaletteMenu();
+  const btn=$('custSave'); btn.textContent='Saved ✓'; btn.classList.add('saved');
+  setTimeout(()=>{ if(btn.classList.contains('saved')){ btn.textContent='Save changes'; btn.classList.remove('saved'); } },1600);
+};
+
+/* export the full palette library + current default as JSON, for backing up / handing off to a dev */
+function exportPaletteData(){
+  const payload=JSON.stringify({palettes:PALETTES,default:st.palette},null,2);
+  const btn=$('paletteExport');
+  const flash=label=>{
+    btn.textContent=label; btn.classList.add('copied');
+    setTimeout(()=>{ if(btn.classList.contains('copied')){
+      btn.innerHTML='<svg viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>Copy palette data';
+      btn.classList.remove('copied');
+    } },1600);
+  };
+  const fallbackCopy=()=>{
+    try{
+      const ta=document.createElement('textarea');
+      ta.value=payload; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      flash('Copied ✓');
+    }catch(e){ window.prompt('Copy this palette data:',payload); flash('Copied ✓'); }
+  };
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(payload).then(()=>flash('Copied ✓')).catch(fallbackCopy);
+  } else fallbackCopy();
+}
+$('paletteExport').onclick=exportPaletteData;
+
+/* boot: restore the saved palette library (migrating the old single-custom format) */
+{
+  let savedList=null, savedPaletteId=null, legacyCustom=null;
+  try{
+    const raw=localStorage.getItem('chordhiit_palettes');
+    if(raw) savedList=JSON.parse(raw);
+    savedPaletteId=localStorage.getItem('chordhiit_palette');
+    legacyCustom=localStorage.getItem('chordhiit_custom');
+  }catch(e){}
+  if(Array.isArray(savedList)&&savedList.length){
+    const clean=savedList.filter(p=>p&&p.id&&p.name&&p.colors);
+    if(clean.length) PALETTES=clean;
+  } else if(legacyCustom){
+    try{
+      const d=JSON.parse(legacyCustom);
+      if(d&&d.keys) PALETTES.push({id:'custom',name:'Custom',colors:deriveTwelve(d.keys),theme:{pageBg:d.bg,dark:d.dark,light:d.light}});
+    }catch(e){}
+  }
+  if(savedPaletteId&&PALETTES.some(p=>p.id===savedPaletteId)) st.palette=savedPaletteId;
+  else st.palette=PALETTES.some(p=>p.id===DEFAULT_PALETTE_ID)?DEFAULT_PALETTE_ID:PALETTES[0].id;
+}
+applyPalette(st.palette);
+buildPaletteMenu();
+
+// keep the gear vertically centered on the bottom toolbar, however many rows it wraps to
+function alignPaletteCtl(){
+  const panel=$('panel'), ctl=$('paletteCtl'), toggle=$('paletteToggle');
+  if(!panel||!ctl||!toggle) return;
+  const pr=panel.getBoundingClientRect(), gh=toggle.getBoundingClientRect().height||34;
+  const panelCenterFromBottom=innerHeight-(pr.top+pr.height/2);
+  ctl.style.bottom=(panelCenterFromBottom-gh/2)+'px';
+}
+addEventListener('resize',alignPaletteCtl);
+alignPaletteCtl();
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(alignPaletteCtl);
+
+buildList(); render(); restartTimer(); requestAnimationFrame(loop);
+
+/* ---------- page-load splash: ~2.5s strobe of default-theme colors + wordmark reveal ---------- */
+/* replayable via runSplash() — e.g. when the user hits Home, to re-run the full load-in experience */
+let splashCycle=null, splashTimers=[];
+function runSplash(){
+  const splash=document.getElementById('splash'), word=document.getElementById('splashWord');
+  if(!splash||!word) return;
+  if(splashCycle) clearInterval(splashCycle);
+  splashTimers.forEach(clearTimeout); splashTimers=[];
+  // snap instantly back to fully opaque + wordmark hidden (no fade-IN) — only the closing
+  // fade-out and the wordmark's own reveal should ever animate
+  splash.style.transition='none'; word.style.transition='none';
+  splash.classList.remove('leaving');
+  word.classList.remove('show');
+  void splash.offsetWidth; // force reflow so the instant snap applies before transitions are restored
+  splash.style.transition=''; word.style.transition='';
+  const swatches=Object.values(COLORS);
+  let last=null;
+  function nextColor(){
+    let c; do{ c=swatches[Math.floor(Math.random()*swatches.length)]; }while(c===last&&swatches.length>1);
+    last=c; splash.style.backgroundColor=c;
+  }
+  nextColor();
+  splashCycle=setInterval(nextColor,375);
+  splashTimers.push(setTimeout(()=>word.classList.add('show'),375));
+  splashTimers.push(setTimeout(()=>{
+    clearInterval(splashCycle); splashCycle=null;
+    splash.classList.add('leaving');
+  },1700));
+}
+runSplash();
+</script>
+</body>
+</html>
