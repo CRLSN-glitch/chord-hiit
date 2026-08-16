@@ -93,13 +93,12 @@ button,select,input{font:inherit;color:inherit}
 .panel-close svg{width:16px;height:16px}
 .menu-fab{
   display:none;position:fixed;left:50%;bottom:14px;transform:translateX(-50%);
-  align-items:center;gap:9px;height:44px;padding:0 20px;
+  align-items:center;justify-content:center;width:58px;height:44px;padding:0;
   background:var(--panel);backdrop-filter:blur(18px) saturate(1.2);-webkit-backdrop-filter:blur(18px) saturate(1.2);
   border:1px solid rgba(246,239,230,.12);border-radius:14px;color:var(--panel-ink);
-  font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;
   cursor:pointer;z-index:30;
   user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
-.menu-fab svg{width:16px;height:16px;fill:currentColor}
+.menu-fab svg{width:18px;height:18px;fill:currentColor}
 .btn{background:transparent;border:1px solid transparent;border-radius:9px;height:34px;min-width:34px;padding:0 8px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--panel-ink);transition:background .15s}
 .btn:hover{background:rgba(246,239,230,.1)}
 .btn[data-tip]{position:relative}
@@ -385,7 +384,7 @@ body.progmode .prog-head{display:flex}
 </div>
 
 <button class="menu-fab" id="menuFab" type="button" aria-controls="panel" aria-expanded="false" aria-label="Open controls">
-  <svg viewBox="0 0 24 24"><path d="M3 6h18v2H3zM3 11h18v2H3zM3 16h18v2H3z"/></svg>Controls
+  <svg viewBox="0 0 24 24"><path d="M3 6h18v2H3zM3 11h18v2H3zM3 16h18v2H3z"/></svg>
 </button>
 <div id="panel">
   <div class="panel-head">
